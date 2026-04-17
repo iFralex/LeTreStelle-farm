@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { ShoppingBasket, ChevronLeft, Leaf, Minus, Plus } from 'lucide-react'
+import { ShoppingBasket, ChevronLeft, Leaf, Minus, Plus, Trash2 } from 'lucide-react'
 
 const DECIMAL_UNITS = new Set(['kg', 'l', 'lt', 'litri', 'etto', 'hg', 'g', 'ml', 'cl'])
 
@@ -51,6 +51,7 @@ export default function Product() {
   const [notFound, setNotFound] = useState(!id)
   const [activeImage, setActiveImage] = useState(0)
   const [showDialog, setShowDialog] = useState(false)
+  const [dialogMode, setDialogMode] = useState<'add' | 'remove'>('add')
   const [quantity, setQuantity] = useState(1)
 
   useEffect(() => {
@@ -89,6 +90,14 @@ export default function Product() {
       price: discountedPrice,
       measureUnit: product.measureUnit,
     })
+    setDialogMode('add')
+    setShowDialog(true)
+  }
+
+  function handleRemoveFromCart() {
+    if (!product) return
+    removeFromCart(product.id)
+    setDialogMode('remove')
     setShowDialog(true)
   }
 
@@ -234,7 +243,7 @@ export default function Product() {
               </div>
 
               {/* Stepper */}
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3">
                 <div
                   className="flex items-center overflow-hidden rounded-2xl border-2 border-terracotta"
                   role="group"
@@ -264,13 +273,22 @@ export default function Product() {
                     <Plus className="h-6 w-6" />
                   </button>
                 </div>
+                {cartItem && (
+                  <button
+                    onClick={handleRemoveFromCart}
+                    aria-label="Rimuovi dalla cassetta"
+                    className="flex items-center justify-center rounded-2xl border-2 border-clay px-4 py-3 text-clay transition-colors hover:border-red-600 hover:bg-red-50 hover:text-red-600 active:scale-95"
+                  >
+                    <Trash2 className="h-6 w-6" />
+                  </button>
+                )}
               </div>
             </div>
           )
         })()}
 
         {/* Cart edit notice */}
-        {cartItem && (
+        {cartItem && quantity === cartItem.quantity && (
           <div className="mb-4 flex items-start gap-3 rounded-2xl border border-golden/30 bg-golden/10 px-5 py-4">
             <span className="text-xl" aria-hidden="true">🧺</span>
             <p className="text-base font-semibold text-bark">
@@ -382,7 +400,7 @@ export default function Product() {
         </div>
       </section>
 
-      {/* Post-add dialog */}
+      {/* Post-action dialog */}
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
         <DialogContent
           className="rounded-2xl bg-cream p-8 sm:max-w-sm"
@@ -390,11 +408,13 @@ export default function Product() {
         >
           <DialogHeader>
             <DialogTitle className="text-center font-heading text-3xl font-bold italic text-bark">
-              Aggiunto! 🎉
+              {dialogMode === 'remove' ? 'Rimosso! 🗑️' : 'Aggiunto! 🎉'}
             </DialogTitle>
           </DialogHeader>
           <p className="mt-2 text-center text-xl text-soil">
-            Vuoi continuare la spesa o preparare la cassetta?
+            {dialogMode === 'remove'
+              ? 'Prodotto rimosso dalla cassetta.'
+              : 'Vuoi continuare la spesa o preparare la cassetta?'}
           </p>
           <div className="mt-6 flex flex-col gap-4">
             <button
@@ -413,7 +433,7 @@ export default function Product() {
               }}
               className="w-full rounded-2xl bg-terracotta py-5 text-xl font-bold text-cream transition-colors hover:bg-bark active:bg-bark"
             >
-              Prepara la cassetta
+              {dialogMode === 'remove' ? 'Vai alla cassetta' : 'Prepara la cassetta'}
             </button>
           </div>
         </DialogContent>
