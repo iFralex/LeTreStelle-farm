@@ -9,6 +9,7 @@ import { ShoppingBasket, CheckCircle, XCircle, Clock, LogOut } from 'lucide-reac
 
 interface OrderItem {
   productId: string
+  productName?: string
   quantity: number
   price: number
   measureUnit: string
@@ -129,7 +130,7 @@ export default function UserOrders() {
       {/* Header */}
       <div className="bg-bark px-6 py-5">
         <h1 className="text-3xl font-bold text-cream">I miei ordini</h1>
-        <p className="mt-1 text-lg text-straw">Ciao, {name}!</p>
+        <p className="mt-1 text-lg text-straw">{name ? `Ciao, ${name}!` : phone}</p>
       </div>
 
       <div className="mx-auto max-w-2xl space-y-8 px-6 py-8">
@@ -239,7 +240,7 @@ function OrderCard({
         {order.items.map((item, i) => (
           <div key={i} className="flex justify-between py-3">
             <span className="text-base font-semibold text-bark">
-              {item.productId}
+              {item.productName ?? item.productId}
             </span>
             <span className="text-base text-soil">
               {item.quantity} {item.measureUnit}

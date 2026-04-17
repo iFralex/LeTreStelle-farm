@@ -18,6 +18,7 @@ import {
 
 interface OrderItem {
   productId: string
+  productName?: string
   quantity: number
   price: number
   measureUnit: string
@@ -301,7 +302,7 @@ function AdminOrderCard({
       <div className="mb-4 divide-y divide-straw border-t border-straw">
         {order.items.map((item, i) => (
           <div key={i} className="flex items-center justify-between py-3">
-            <span className="text-base font-semibold text-bark">{item.productId}</span>
+            <span className="text-base font-semibold text-bark">{item.productName ?? item.productId}</span>
             <span className="text-base text-soil">
               {item.quantity} {item.measureUnit}
             </span>

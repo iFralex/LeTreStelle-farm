@@ -4,6 +4,7 @@ import {
   collection,
   getDocs,
   doc,
+  setDoc,
   updateDoc,
   addDoc,
 } from 'firebase/firestore'
@@ -26,6 +27,8 @@ import {
   ImagePlus,
   Package,
   Loader2,
+  X,
+  Star,
 } from 'lucide-react'
 
 interface Product {
@@ -58,8 +61,10 @@ export default function AdminCatalog() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [form, setForm] = useState<FormData>(EMPTY_FORM)
-  const [imageFile, setImageFile] = useState<File | null>(null)
-  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [customProductId, setCustomProductId] = useState('')
+  // Gallery: existing URLs to keep + new files pending upload
+  const [galleryImages, setGalleryImages] = useState<string[]>([])
+  const [pendingFiles, setPendingFiles] = useState<{ file: File; preview: string }[]>([])
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -102,8 +107,9 @@ export default function AdminCatalog() {
   function openAddDialog() {
     setEditingProduct(null)
     setForm(EMPTY_FORM)
-    setImageFile(null)
-    setImagePreview(null)
+    setCustomProductId('')
+    setGalleryImages([])
+    setPendingFiles([])
     setFormError(null)
     setDialogOpen(true)
   }
@@ -116,17 +122,28 @@ export default function AdminCatalog() {
       price: product.price,
       measureUnit: product.measureUnit,
     })
-    setImageFile(null)
-    setImagePreview(product.images?.[0] ?? null)
+    setGalleryImages(product.images ?? [])
+    setPendingFiles([])
     setFormError(null)
     setDialogOpen(true)
   }
 
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setImageFile(file)
-    setImagePreview(URL.createObjectURL(file))
+  function handleAddImages(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? [])
+    const newPending = files.map((file) => ({
+      file,
+      preview: URL.createObjectURL(file),
+    }))
+    setPendingFiles((prev) => [...prev, ...newPending])
+    e.target.value = ''
+  }
+
+  function removeGalleryImage(url: string) {
+    setGalleryImages((prev) => prev.filter((u) => u !== url))
+  }
+
+  function removePendingFile(index: number) {
+    setPendingFiles((prev) => prev.filter((_, i) => i !== index))
   }
 
   async function handleSave() {
@@ -141,50 +158,54 @@ export default function AdminCatalog() {
     setFormError(null)
     setSaving(true)
     try {
-      let imageUrl: string | null = null
+      // Upload all pending files in parallel
+      const uploadedUrls = await Promise.all(
+        pendingFiles.map(async ({ file }) => {
+          const storageRef = ref(storage, `products/${Date.now()}_${file.name}`)
+          await uploadBytes(storageRef, file)
+          return getDownloadURL(storageRef)
+        })
+      )
+      const finalImages = [...galleryImages, ...uploadedUrls]
 
-      if (imageFile) {
-        const storageRef = ref(
-          storage,
-          `products/${Date.now()}_${imageFile.name}`
-        )
-        await uploadBytes(storageRef, imageFile)
-        imageUrl = await getDownloadURL(storageRef)
+      const productData = {
+        name: form.name.trim(),
+        description: form.description.trim(),
+        price: Number(form.price),
+        measureUnit: form.measureUnit.trim(),
+        images: finalImages,
       }
 
       if (editingProduct) {
-        // Update existing product
-        const updates: Partial<Product> = {
-          name: form.name.trim(),
-          description: form.description.trim(),
-          price: Number(form.price),
-          measureUnit: form.measureUnit.trim(),
-        }
-        if (imageUrl) {
-          updates.images = [imageUrl, ...(editingProduct.images ?? [])]
-        }
-        await updateDoc(doc(db, 'products', editingProduct.id), updates)
+        await updateDoc(doc(db, 'products', editingProduct.id), productData)
         setProducts((prev) =>
           prev.map((p) =>
-            p.id === editingProduct.id ? { ...p, ...updates } : p
+            p.id === editingProduct.id ? { ...p, ...productData } : p
           )
         )
       } else {
-        // Add new product
-        const newProduct = {
-          name: form.name.trim(),
-          description: form.description.trim(),
-          price: Number(form.price),
-          measureUnit: form.measureUnit.trim(),
-          images: imageUrl ? [imageUrl] : [],
-          isAvailable: true,
-        }
-        const docRef = await addDoc(collection(db, 'products'), newProduct)
-        setProducts((prev) =>
-          [...prev, { id: docRef.id, ...newProduct }].sort((a, b) =>
-            a.name.localeCompare(b.name)
+        const trimmedId = customProductId.trim()
+        if (trimmedId) {
+          await setDoc(doc(db, 'products', trimmedId), {
+            ...productData,
+            isAvailable: true,
+          })
+          setProducts((prev) =>
+            [...prev, { id: trimmedId, ...productData, isAvailable: true }].sort(
+              (a, b) => a.name.localeCompare(b.name)
+            )
           )
-        )
+        } else {
+          const docRef = await addDoc(collection(db, 'products'), {
+            ...productData,
+            isAvailable: true,
+          })
+          setProducts((prev) =>
+            [...prev, { id: docRef.id, ...productData, isAvailable: true }].sort(
+              (a, b) => a.name.localeCompare(b.name)
+            )
+          )
+        }
       }
       setDialogOpen(false)
     } catch (err) {
@@ -291,48 +312,104 @@ export default function AdminCatalog() {
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4 px-6 py-5">
-            {/* Image upload */}
+          <div className="max-h-[75vh] space-y-4 overflow-y-auto px-6 py-5">
+            {/* Gallery */}
             <div>
               <label className="mb-2 block text-base font-bold text-bark">
-                Immagine
+                Galleria immagini
               </label>
-              <div
-                className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-sage bg-white py-6 transition-colors hover:border-terracotta"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                {imagePreview ? (
-                  <img
-                    src={imagePreview}
-                    alt="preview"
-                    className="h-32 w-32 rounded-xl object-cover shadow"
-                  />
-                ) : (
-                  <>
-                    <ImagePlus className="h-10 w-10 text-clay" />
-                    <span className="text-base font-semibold text-soil">
-                      Clicca per caricare un'immagine
+              <div className="grid grid-cols-3 gap-2">
+                {/* Existing images */}
+                {galleryImages.map((url, i) => (
+                  <div key={url} className="group relative aspect-square overflow-hidden rounded-xl bg-straw">
+                    <img src={url} alt="" className="h-full w-full object-cover" />
+                    {i === 0 && (
+                      <span className="absolute bottom-1 left-1 flex items-center gap-0.5 rounded bg-terracotta px-1.5 py-0.5 text-xs font-bold text-cream">
+                        <Star className="h-3 w-3" /> Principale
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => removeGalleryImage(url)}
+                      className="absolute right-1 top-1 rounded-full bg-red-500 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100"
+                      aria-label="Rimuovi immagine"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+
+                {/* Pending files (to upload) */}
+                {pendingFiles.map(({ preview }, i) => (
+                  <div key={i} className="group relative aspect-square overflow-hidden rounded-xl border-2 border-dashed border-sage bg-straw">
+                    <img src={preview} alt="" className="h-full w-full object-cover opacity-80" />
+                    <span className="absolute bottom-1 left-1 rounded bg-sage px-1.5 py-0.5 text-xs font-bold text-cream">
+                      Nuovo
                     </span>
-                  </>
-                )}
+                    <button
+                      type="button"
+                      onClick={() => removePendingFile(i)}
+                      className="absolute right-1 top-1 rounded-full bg-red-500 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100"
+                      aria-label="Annulla upload"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+
+                {/* Add button */}
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex aspect-square flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-sage bg-white text-clay transition-colors hover:border-terracotta hover:text-terracotta"
+                >
+                  <ImagePlus className="h-7 w-7" />
+                  <span className="text-xs font-semibold">Aggiungi</span>
+                </button>
               </div>
               <input
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
+                multiple
                 className="hidden"
-                onChange={handleFileChange}
+                onChange={handleAddImages}
               />
-              {imagePreview && (
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="mt-2 text-sm font-semibold text-clay underline"
-                >
-                  Cambia immagine
-                </button>
+              {galleryImages.length + pendingFiles.length > 0 && (
+                <p className="mt-1.5 text-xs text-soil">
+                  La prima immagine sarà quella principale. Passa il mouse su una foto per eliminarla.
+                </p>
               )}
             </div>
+
+            {/* Product ID (solo per nuovi prodotti) */}
+            {!editingProduct && (
+              <div>
+                <label className="mb-1 block text-base font-bold text-bark">
+                  ID prodotto
+                </label>
+                <input
+                  type="text"
+                  value={customProductId}
+                  onChange={(e) => setCustomProductId(e.target.value.replace(/\s/g, '-'))}
+                  placeholder="Lascia vuoto per generare automaticamente"
+                  className="w-full rounded-xl border-2 border-sage bg-white px-4 py-3 font-mono text-base text-bark outline-none focus:border-terracotta"
+                />
+                <p className="mt-1 text-xs text-soil">
+                  Usato nell'URL del prodotto. Solo lettere, numeri e trattini.
+                </p>
+              </div>
+            )}
+            {editingProduct && (
+              <div>
+                <label className="mb-1 block text-base font-bold text-bark">
+                  ID prodotto
+                </label>
+                <div className="flex items-center gap-2 rounded-xl border-2 border-straw bg-straw/40 px-4 py-3 font-mono text-base text-soil">
+                  {editingProduct.id}
+                </div>
+              </div>
+            )}
 
             {/* Name */}
             <div>

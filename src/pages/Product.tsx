@@ -10,7 +10,24 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { ShoppingBasket, ChevronLeft, ChevronRight, Leaf } from 'lucide-react'
+import { ShoppingBasket, ChevronLeft, ChevronRight, Leaf, Minus, Plus } from 'lucide-react'
+
+const DECIMAL_UNITS = new Set(['kg', 'l', 'lt', 'litri', 'etto', 'hg', 'g', 'ml', 'cl'])
+
+function getStep(unit: string): number {
+  return DECIMAL_UNITS.has(unit.toLowerCase()) ? 0.5 : 1
+}
+
+function getPresets(unit: string): number[] {
+  if (DECIMAL_UNITS.has(unit.toLowerCase())) {
+    return [0.5, 1, 1.5, 2, 3, 5]
+  }
+  return [1, 2, 3, 5, 10]
+}
+
+function formatQuantity(q: number): string {
+  return q % 1 === 0 ? String(q) : q.toFixed(1).replace('.', ',')
+}
 
 interface Product {
   id: string
@@ -44,7 +61,9 @@ export default function Product() {
         if (!snap.exists()) {
           setNotFound(true)
         } else {
-          setProduct({ id: snap.id, ...snap.data() } as Product)
+          const p = { id: snap.id, ...snap.data() } as Product
+          setProduct(p)
+          setQuantity(getStep(p.measureUnit))
         }
       } catch (err) {
         console.error('Error fetching product:', err)
@@ -61,6 +80,7 @@ export default function Product() {
     const { discountedPrice } = applyPreOrderDiscount(product.price)
     addToCart({
       productId: product.id,
+      productName: product.name,
       quantity,
       price: discountedPrice,
       measureUnit: product.measureUnit,
@@ -206,29 +226,66 @@ export default function Product() {
         </div>
 
         {/* Quantity selector */}
-        <div className="mb-5 flex items-center gap-4">
-          <span className="text-xl font-bold text-bark">Quantità:</span>
-          <div className="flex items-center overflow-hidden rounded-2xl border-2 border-terracotta">
-            <button
-              onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-              className="px-6 py-3 text-3xl font-bold text-terracotta transition-colors hover:bg-straw active:bg-straw"
-              aria-label="Diminuisci quantità"
-            >
-              −
-            </button>
-            <span className="min-w-[3.5rem] text-center text-2xl font-bold text-bark">
-              {quantity}
-            </span>
-            <button
-              onClick={() => setQuantity((q) => q + 1)}
-              className="px-6 py-3 text-3xl font-bold text-terracotta transition-colors hover:bg-straw active:bg-straw"
-              aria-label="Aumenta quantità"
-            >
-              +
-            </button>
-          </div>
-          <span className="text-xl text-soil">{product.measureUnit}</span>
-        </div>
+        {(() => {
+          const step = getStep(product.measureUnit)
+          const min = step
+          const presets = getPresets(product.measureUnit)
+          return (
+            <div className="mb-5 space-y-4">
+              <span className="text-xl font-bold text-bark">Quantità</span>
+
+              {/* Preset chips */}
+              <div className="flex flex-wrap gap-2" role="group" aria-label="Quantità predefinite">
+                {presets.map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setQuantity(p)}
+                    aria-pressed={quantity === p}
+                    className={`rounded-2xl border-2 px-5 py-2.5 text-lg font-bold transition-colors ${
+                      quantity === p
+                        ? 'border-terracotta bg-terracotta text-cream'
+                        : 'border-sage bg-cream text-bark hover:border-terracotta hover:bg-straw'
+                    }`}
+                  >
+                    {formatQuantity(p)} {product.measureUnit}
+                  </button>
+                ))}
+              </div>
+
+              {/* Stepper */}
+              <div className="flex items-center gap-4">
+                <div
+                  className="flex items-center overflow-hidden rounded-2xl border-2 border-terracotta"
+                  role="group"
+                  aria-label="Selettore quantità"
+                >
+                  <button
+                    onClick={() => setQuantity((q) => Math.max(min, parseFloat((q - step).toFixed(2))))}
+                    disabled={quantity <= min}
+                    className="flex items-center justify-center px-5 py-3 text-terracotta transition-colors hover:bg-straw active:bg-straw disabled:opacity-30"
+                    aria-label={`Riduci di ${formatQuantity(step)} ${product.measureUnit}`}
+                  >
+                    <Minus className="h-6 w-6" />
+                  </button>
+                  <span
+                    className="min-w-[4.5rem] text-center text-2xl font-bold text-bark"
+                    aria-live="polite"
+                    aria-label={`${formatQuantity(quantity)} ${product.measureUnit}`}
+                  >
+                    {formatQuantity(quantity)} <span className="text-base font-semibold text-soil">{product.measureUnit}</span>
+                  </span>
+                  <button
+                    onClick={() => setQuantity((q) => parseFloat((q + step).toFixed(2)))}
+                    className="flex items-center justify-center px-5 py-3 text-terracotta transition-colors hover:bg-straw active:bg-straw"
+                    aria-label={`Aumenta di ${formatQuantity(step)} ${product.measureUnit}`}
+                  >
+                    <Plus className="h-6 w-6" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )
+        })()}
 
         {/* Add to cart button */}
         <button

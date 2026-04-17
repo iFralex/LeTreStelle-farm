@@ -16,6 +16,8 @@ import { db } from '@/lib/firebase'
 import { useStore } from '@/store/useStore'
 import {
   getAvailablePickupDates,
+  getPickupDatesForMarket,
+  MARKETS,
   applyPreOrderDiscount,
   formatPrice,
   type PickupDate,
@@ -26,7 +28,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { ShoppingBasket, Leaf, CheckCircle, UserCheck, AlertCircle } from 'lucide-react'
+import { ShoppingBasket, Leaf, CheckCircle, UserCheck, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react'
+import { normalizePhone, isValidPhone } from '@/lib/phone'
 
 export default function Checkout() {
   const { cart, clearCart, name, phone, setUser, clearUser } = useStore()
@@ -35,6 +38,10 @@ export default function Checkout() {
   const [excludedDates, setExcludedDates] = useState<string[]>([])
   const [selectedDate, setSelectedDate] = useState<PickupDate | null>(null)
   const [datesLoading, setDatesLoading] = useState(true)
+
+  // Advanced selection state
+  const [showAdvanced, setShowAdvanced] = useState(false)
+  const [advancedMarketId, setAdvancedMarketId] = useState<string>(MARKETS[0].id)
 
   // User form state
   const [inputName, setInputName] = useState('')
@@ -76,6 +83,12 @@ export default function Checkout() {
     [excludedDates, datesLoading]
   )
 
+  // Advanced picker dates for selected market
+  const advancedDates = useMemo(
+    () => (datesLoading ? [] : getPickupDatesForMarket(advancedMarketId, excludedDates, 12)),
+    [advancedMarketId, excludedDates, datesLoading]
+  )
+
   // Totals
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
   const originalSubtotal = cart.reduce((item_sum, item) => {
@@ -85,17 +98,15 @@ export default function Checkout() {
   const savings = originalSubtotal - subtotal
 
   // Effective user data (either stored or from form)
-  const effectiveUser =
-    name && phone
-      ? { name, phone }
-      : showChangeUser || (!name && !phone)
-      ? { name: inputName.trim(), phone: inputPhone.trim() }
-      : { name, phone }
+  // phone-only login: phone is set but name may be empty
+  const effectiveUser = showChangeUser || !phone
+    ? { name: inputName.trim(), phone: normalizePhone(inputPhone) }
+    : { name: name || inputName.trim(), phone }
 
   function validateForm(): string {
     if (!selectedDate) return 'Seleziona una data di ritiro.'
     if (!effectiveUser.name) return 'Inserisci il tuo nome.'
-    if (!effectiveUser.phone || !/^[0-9+\s-]{8,15}$/.test(effectiveUser.phone))
+    if (!isValidPhone(effectiveUser.phone))
       return 'Inserisci un numero di telefono valido.'
     if (cart.length === 0) return 'Il carrello è vuoto.'
     return ''
@@ -113,6 +124,7 @@ export default function Checkout() {
     const user = effectiveUser
     const orderItems = cart.map((item) => ({
       productId: item.productId,
+      productName: item.productName,
       quantity: item.quantity,
       price: item.price,
       measureUnit: item.measureUnit,
@@ -270,7 +282,7 @@ export default function Checkout() {
                   <ShoppingBasket className="h-7 w-7 text-clay" />
                   <div>
                     <p className="text-lg font-semibold text-bark">
-                      {item.productId}
+                      {item.productName}
                     </p>
                     <p className="text-base text-soil">
                       {item.quantity} {item.measureUnit}
@@ -314,10 +326,7 @@ export default function Checkout() {
           {datesLoading ? (
             <div className="space-y-3">
               {[1, 2, 3].map((i) => (
-                <div
-                  key={i}
-                  className="h-20 animate-pulse rounded-2xl bg-straw"
-                />
+                <div key={i} className="h-20 animate-pulse rounded-2xl bg-straw" />
               ))}
             </div>
           ) : pickupDates.length === 0 ? (
@@ -329,29 +338,87 @@ export default function Checkout() {
             </div>
           ) : (
             <div className="space-y-3">
-              {pickupDates.map((pd) => {
-                const isSelected = selectedDate?.dateStr === pd.dateStr
-                return (
-                  <button
-                    key={pd.dateStr}
-                    onClick={() => setSelectedDate(pd)}
-                    className={`w-full rounded-2xl border-3 px-6 py-5 text-left text-xl font-bold transition-all active:scale-[0.98] ${
-                      isSelected
-                        ? 'border-terracotta bg-terracotta text-cream shadow-lg'
-                        : 'border-sage bg-cream text-bark hover:border-terracotta hover:bg-straw'
-                    }`}
-                  >
-                    <span className="block text-2xl">{pd.market.name}</span>
-                    <span
-                      className={`block text-lg font-semibold ${
-                        isSelected ? 'text-straw' : 'text-soil'
+              {pickupDates.map((pd) => (
+                <DateButton
+                  key={pd.dateStr}
+                  pd={pd}
+                  isSelected={selectedDate?.dateStr === pd.dateStr}
+                  onSelect={setSelectedDate}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Advanced selection toggle */}
+          {!datesLoading && (
+            <button
+              onClick={() => setShowAdvanced((v) => !v)}
+              className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-sage py-3 text-base font-bold text-soil transition-colors hover:border-terracotta hover:text-bark"
+              aria-expanded={showAdvanced}
+            >
+              {showAdvanced ? (
+                <>
+                  <ChevronUp className="h-5 w-5" />
+                  Nascondi selezione avanzata
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="h-5 w-5" />
+                  Selezione avanzata
+                </>
+              )}
+            </button>
+          )}
+
+          {/* Advanced panel */}
+          {showAdvanced && (
+            <div className="mt-4 space-y-4 border-t border-straw pt-4">
+              {/* Market chips */}
+              <div>
+                <p className="mb-2 text-base font-bold text-bark">Mercato</p>
+                <div className="flex flex-wrap gap-2">
+                  {MARKETS.map((m) => (
+                    <button
+                      key={m.id}
+                      onClick={() => setAdvancedMarketId(m.id)}
+                      aria-pressed={advancedMarketId === m.id}
+                      className={`rounded-2xl border-2 px-5 py-2.5 text-base font-bold transition-colors ${
+                        advancedMarketId === m.id
+                          ? 'border-terracotta bg-terracotta text-cream'
+                          : 'border-sage bg-cream text-bark hover:border-terracotta hover:bg-straw'
                       }`}
                     >
-                      {pd.label.split('—')[1]?.trim()}
-                    </span>
-                  </button>
-                )
-              })}
+                      {m.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Dates for selected market */}
+              <div>
+                <p className="mb-2 text-base font-bold text-bark">Data</p>
+                {advancedDates.length === 0 ? (
+                  <div className="flex items-center gap-2 rounded-2xl bg-straw/50 px-4 py-3 text-base text-soil">
+                    <AlertCircle className="h-5 w-5 shrink-0 text-clay" />
+                    Nessuna data disponibile per questo mercato.
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {advancedDates.map((pd) => (
+                      <DateButton
+                        key={pd.dateStr}
+                        pd={pd}
+                        isSelected={selectedDate?.dateStr === pd.dateStr}
+                        onSelect={(pd) => {
+                          setSelectedDate(pd)
+                          setShowAdvanced(false)
+                        }}
+                        compact
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </section>
@@ -360,18 +427,39 @@ export default function Checkout() {
         <section className="rounded-2xl bg-white p-6 shadow-md">
           <h2 className="mb-4 text-2xl font-bold text-bark">I tuoi dati</h2>
 
-          {name && phone && !showChangeUser ? (
-            /* Returning user */
+          {phone && !showChangeUser ? (
+            /* Returning user (phone known, name may or may not be set) */
             <div className="flex flex-col gap-4">
               <div className="flex items-center gap-4 rounded-2xl bg-sage/10 p-5">
                 <UserCheck className="h-10 w-10 text-sage" />
                 <div>
                   <p className="text-2xl font-bold text-bark">
-                    Bentornato, {name}!
+                    {name ? `Bentornato, ${name}!` : 'Bentornato!'}
                   </p>
                   <p className="text-lg text-soil">{phone}</p>
                 </div>
               </div>
+
+              {/* Ask for name if not yet stored */}
+              {!name && (
+                <div>
+                  <label
+                    htmlFor="checkout-name-returning"
+                    className="mb-2 block text-xl font-bold text-bark"
+                  >
+                    Come ti chiami?
+                  </label>
+                  <input
+                    id="checkout-name-returning"
+                    type="text"
+                    value={inputName}
+                    onChange={(e) => setInputName(e.target.value)}
+                    placeholder="Il tuo nome"
+                    className="w-full rounded-2xl border-2 border-sage bg-cream px-5 py-4 text-xl text-bark placeholder-clay outline-none focus:border-terracotta"
+                  />
+                </div>
+              )}
+
               <button
                 onClick={() => {
                   setShowChangeUser(true)
@@ -414,7 +502,7 @@ export default function Checkout() {
                   type="tel"
                   value={inputPhone}
                   onChange={(e) => setInputPhone(e.target.value)}
-                  placeholder="+39 000 0000000"
+                  placeholder="3XX XXX XXXX"
                   className="w-full rounded-2xl border-2 border-sage bg-cream px-5 py-4 text-xl text-bark placeholder-clay outline-none focus:border-terracotta"
                 />
               </div>
@@ -485,5 +573,38 @@ export default function Checkout() {
         </DialogContent>
       </Dialog>
     </div>
+  )
+}
+
+function DateButton({
+  pd,
+  isSelected,
+  onSelect,
+  compact = false,
+}: {
+  pd: PickupDate
+  isSelected: boolean
+  onSelect: (pd: PickupDate) => void
+  compact?: boolean
+}) {
+  const datePart = pd.label.split('—')[1]?.trim() ?? ''
+  return (
+    <button
+      onClick={() => onSelect(pd)}
+      className={`w-full rounded-2xl border-3 text-left font-bold transition-all active:scale-[0.98] ${
+        compact ? 'px-4 py-3' : 'px-6 py-5'
+      } ${
+        isSelected
+          ? 'border-terracotta bg-terracotta text-cream shadow-lg'
+          : 'border-sage bg-cream text-bark hover:border-terracotta hover:bg-straw'
+      }`}
+    >
+      <span className={`block font-bold ${compact ? 'text-lg' : 'text-2xl'}`}>
+        {pd.market.name}
+      </span>
+      <span className={`block font-semibold capitalize ${isSelected ? 'text-straw' : 'text-soil'} ${compact ? 'text-base' : 'text-lg'}`}>
+        {datePart}
+      </span>
+    </button>
   )
 }

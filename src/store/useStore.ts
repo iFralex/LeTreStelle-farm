@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware'
 
 export interface CartItem {
   productId: string
+  productName: string
   quantity: number
   price: number
   measureUnit: string
@@ -57,7 +58,7 @@ export const useStore = create<StoreState>()(
     }),
     {
       name: 'farmers-market-store',
-      partialize: (state) => ({ name: state.name, phone: state.phone }),
+      partialize: (state) => ({ name: state.name, phone: state.phone, cart: state.cart }),
     }
   )
 )
