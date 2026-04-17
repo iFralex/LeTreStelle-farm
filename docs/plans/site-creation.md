@@ -12,14 +12,14 @@ The backend relies on Firebase (Firestore for database, Storage for images). The
 ---
 
 ### Task 1: Project Setup & Firebase Initialization
-- [ ] Install required dependencies: `react-router-dom`, `zustand`, `firebase`, `lucide-react`, `date-fns`, `qrcode.react`, `crypto-js` (for simple admin hashing).
-- [ ] Initialize shadcn/ui components: `button`, `dialog`, `input`, `label`, `card`, `toast`, `calendar` (if needed for admin).
-- [ ] Create `src/lib/firebase.ts`. Initialize Firebase App, Firestore, and Storage using environment variables (`VITE_FIREBASE_API_KEY`, etc.). Export `db` and `storage`.
-- [ ] Set up React Router in `src/App.tsx`. Define routes:
+- [x] Install required dependencies: `react-router-dom`, `zustand`, `firebase`, `lucide-react`, `date-fns`, `qrcode.react`, `crypto-js` (for simple admin hashing).
+- [x] Initialize shadcn/ui components: `button`, `dialog`, `input`, `label`, `card`, `toast`, `calendar` (if needed for admin).
+- [x] Create `src/lib/firebase.ts`. Initialize Firebase App, Firestore, and Storage using environment variables (`VITE_FIREBASE_API_KEY`, etc.). Export `db` and `storage`.
+- [x] Set up React Router in `src/App.tsx`. Define routes:
   - Public: `/` (Landing), `/p/:id` (Product), `/checkout` (Cart/Checkout), `/ordini` (User Dashboard), `/login` (User Phone Login).
   - Admin: `/admin` (Login), `/admin/dashboard`, `/admin/catalog`, `/admin/qr-generator`, `/admin/settings`.
-- [ ] Create a global Layout component that includes the "Contact us on WhatsApp" floating banner.
-- [ ] Mark completed.
+- [x] Create a global Layout component that includes the "Contact us on WhatsApp" floating banner.
+- [x] Mark completed.
 
 ---
 
