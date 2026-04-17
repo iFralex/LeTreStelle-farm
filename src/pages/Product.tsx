@@ -43,6 +43,7 @@ export default function Product() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const addToCart = useStore((s) => s.addToCart)
+  const cart = useStore((s) => s.cart)
 
   const [product, setProduct] = useState<Product | null>(null)
   const [loading, setLoading] = useState(!!id)
@@ -117,6 +118,7 @@ export default function Product() {
   const { discountedPrice, discountLabel, originalPrice } =
     applyPreOrderDiscount(product.price)
   const images = product.images ?? []
+  const cartItem = cart.find((i) => i.productId === product.id)
 
   return (
     <div className="min-h-screen bg-cream">
@@ -287,6 +289,35 @@ export default function Product() {
             </div>
           )
         })()}
+
+        {/* Total price & cart notice */}
+        <div className="mb-5 rounded-2xl border border-golden/25 bg-white px-5 py-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-lg font-semibold text-soil">Totale</span>
+            <span className="text-2xl font-bold text-terracotta">
+              € {(discountedPrice * quantity).toFixed(2).replace('.', ',')}
+            </span>
+          </div>
+          {cartItem && (
+            <div className="mt-3 border-t border-straw pt-3 space-y-1.5">
+              <p className="text-sm text-clay">
+                🧺 Già in cassetta:{' '}
+                <strong className="text-bark">
+                  {formatQuantity(cartItem.quantity)} {product.measureUnit}
+                </strong>
+              </p>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-bark">Totale cumulativo</span>
+                <span className="text-lg font-bold text-bark">
+                  € {(discountedPrice * (quantity + cartItem.quantity)).toFixed(2).replace('.', ',')}
+                  <span className="ml-1 text-sm font-normal text-soil">
+                    ({formatQuantity(quantity + cartItem.quantity)} {product.measureUnit})
+                  </span>
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Add to cart button */}
         <button
