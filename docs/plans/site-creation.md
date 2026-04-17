@@ -24,11 +24,11 @@ The backend relies on Firebase (Firestore for database, Storage for images). The
 ---
 
 ### Task 2: State Management (Zustand) & Frictionless Auth Logic
-- [ ] Create `src/store/useStore.ts` using Zustand.
-- [ ] Create a `cartSlice` to manage the user's cart (array of objects with `productId`, `quantity`, `price`, `measureUnit`). Include actions: `addToCart`, `removeFromCart`, `clearCart`.
-- [ ] Create a `userSlice` to handle the frictionless authentication. State should include `name`, `phone`.
-- [ ] Implement a `persist` middleware in Zustand for the `userSlice` so `name` and `phone` are automatically saved to and loaded from `localStorage`.
-- [ ] Mark completed.
+- [x] Create `src/store/useStore.ts` using Zustand.
+- [x] Create a `cartSlice` to manage the user's cart (array of objects with `productId`, `quantity`, `price`, `measureUnit`). Include actions: `addToCart`, `removeFromCart`, `clearCart`.
+- [x] Create a `userSlice` to handle the frictionless authentication. State should include `name`, `phone`.
+- [x] Implement a `persist` middleware in Zustand for the `userSlice` so `name` and `phone` are automatically saved to and loaded from `localStorage`.
+- [x] Mark completed.
 
 ---
 
