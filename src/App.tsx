@@ -14,6 +14,7 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminCatalog from './pages/admin/AdminCatalog';
 import AdminQR from './pages/admin/AdminQR';
 import AdminSettings from './pages/admin/AdminSettings';
+import AdminGuard from './components/AdminGuard';
 
 export default function App() {
   return (
@@ -30,10 +31,12 @@ export default function App() {
 
         {/* Admin routes */}
         <Route path="/admin" element={<AdminLogin />} />
-        <Route path="/admin/dashboard" element={<AdminDashboard />} />
-        <Route path="/admin/catalog" element={<AdminCatalog />} />
-        <Route path="/admin/qr-generator" element={<AdminQR />} />
-        <Route path="/admin/settings" element={<AdminSettings />} />
+        <Route element={<AdminGuard />}>
+          <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          <Route path="/admin/catalog" element={<AdminCatalog />} />
+          <Route path="/admin/qr-generator" element={<AdminQR />} />
+          <Route path="/admin/settings" element={<AdminSettings />} />
+        </Route>
       </Routes>
     </BrowserRouter>
   );

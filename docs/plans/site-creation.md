@@ -78,11 +78,11 @@ The backend relies on Firebase (Firestore for database, Storage for images). The
 ---
 
 ### Task 7: Admin Auth & Order Management
-- [ ] Build `src/pages/admin/AdminLogin.tsx`. A single password input. Compare the `crypto-js` SHA256 hash of the input against a hardcoded hash in Firestore (`admin/config` document). Store a temporary token/flag in `sessionStorage` upon success to protect admin routes.
-- [ ] Build `src/pages/admin/AdminDashboard.tsx`. Fetch all `orders`.
-- [ ] Create filters to view orders by specific Market and Date.
-- [ ] Add buttons to quickly change order status (`ritirato`, `non_ritirato`).
-- [ ] Mark completed.
+- [x] Build `src/pages/admin/AdminLogin.tsx`. A single password input. Compare the `crypto-js` SHA256 hash of the input against a hardcoded hash in Firestore (`admin/config` document). Store a temporary token/flag in `sessionStorage` upon success to protect admin routes.
+- [x] Build `src/pages/admin/AdminDashboard.tsx`. Fetch all `orders`.
+- [x] Create filters to view orders by specific Market and Date.
+- [x] Add buttons to quickly change order status (`ritirato`, `non_ritirato`).
+- [x] Mark completed.
 
 ---
 
