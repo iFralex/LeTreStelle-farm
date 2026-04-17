@@ -1,3 +1,489 @@
+import { useEffect, useState, useMemo } from 'react'
+import { Link } from 'react-router-dom'
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  where,
+  addDoc,
+  updateDoc,
+  arrayUnion,
+  serverTimestamp,
+} from 'firebase/firestore'
+import { db } from '@/lib/firebase'
+import { useStore } from '@/store/useStore'
+import {
+  getAvailablePickupDates,
+  applyPreOrderDiscount,
+  formatPrice,
+  type PickupDate,
+} from '@/lib/marketLogic'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { ShoppingBasket, Leaf, CheckCircle, UserCheck, AlertCircle } from 'lucide-react'
+
 export default function Checkout() {
-  return <div>Checkout - Coming soon</div>;
+  const { cart, clearCart, name, phone, setUser, clearUser } = useStore()
+
+  // Pickup date state
+  const [excludedDates, setExcludedDates] = useState<string[]>([])
+  const [selectedDate, setSelectedDate] = useState<PickupDate | null>(null)
+  const [datesLoading, setDatesLoading] = useState(true)
+
+  // User form state
+  const [inputName, setInputName] = useState('')
+  const [inputPhone, setInputPhone] = useState('')
+  const [showChangeUser, setShowChangeUser] = useState(false)
+
+  // Submission state
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState('')
+  const [orderSuccess, setOrderSuccess] = useState(false)
+
+  // Merge dialog state
+  const [mergeDialogOpen, setMergeDialogOpen] = useState(false)
+  const [pendingOrderId, setPendingOrderId] = useState<string | null>(null)
+  const [pendingSubmitData, setPendingSubmitData] = useState<Record<string, unknown> | null>(null)
+
+  // Fetch excluded dates from Firestore
+  useEffect(() => {
+    async function fetchExcludedDates() {
+      try {
+        const ref = doc(db, 'settings', 'dates')
+        const snap = await getDoc(ref)
+        if (snap.exists()) {
+          const data = snap.data()
+          setExcludedDates(data.excludedDates ?? [])
+        }
+      } catch (err) {
+        console.error('Error fetching excluded dates:', err)
+      } finally {
+        setDatesLoading(false)
+      }
+    }
+    fetchExcludedDates()
+  }, [])
+
+  // Compute available pickup dates derived from excludedDates
+  const pickupDates = useMemo(
+    () => (datesLoading ? [] : getAvailablePickupDates(excludedDates)),
+    [excludedDates, datesLoading]
+  )
+
+  // Totals
+  const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
+  const originalSubtotal = cart.reduce((item_sum, item) => {
+    const { originalPrice } = applyPreOrderDiscount(item.price / (1 - 0.1))
+    return item_sum + originalPrice * item.quantity
+  }, 0)
+  const savings = originalSubtotal - subtotal
+
+  // Effective user data (either stored or from form)
+  const effectiveUser =
+    name && phone
+      ? { name, phone }
+      : showChangeUser || (!name && !phone)
+      ? { name: inputName.trim(), phone: inputPhone.trim() }
+      : { name, phone }
+
+  function validateForm(): string {
+    if (!selectedDate) return 'Seleziona una data di ritiro.'
+    if (!effectiveUser.name) return 'Inserisci il tuo nome.'
+    if (!effectiveUser.phone || !/^[0-9+\s-]{8,15}$/.test(effectiveUser.phone))
+      return 'Inserisci un numero di telefono valido.'
+    if (cart.length === 0) return 'Il carrello è vuoto.'
+    return ''
+  }
+
+  async function handleSubmit() {
+    const error = validateForm()
+    if (error) {
+      setSubmitError(error)
+      return
+    }
+    setSubmitError('')
+    setSubmitting(true)
+
+    const user = effectiveUser
+    const orderItems = cart.map((item) => ({
+      productId: item.productId,
+      quantity: item.quantity,
+      price: item.price,
+      measureUnit: item.measureUnit,
+    }))
+
+    const orderData = {
+      name: user.name,
+      phone: user.phone,
+      pickupDate: selectedDate!.dateStr,
+      marketId: selectedDate!.market.id,
+      marketName: selectedDate!.market.name,
+      items: orderItems,
+      total: subtotal,
+      status: 'pending',
+      createdAt: serverTimestamp(),
+    }
+
+    try {
+      // Check for existing pending order for same phone + same pickup date
+      const q = query(
+        collection(db, 'orders'),
+        where('phone', '==', user.phone),
+        where('status', '==', 'pending')
+      )
+      const snap = await getDocs(q)
+
+      const sameDate = snap.docs.find(
+        (d) => d.data().pickupDate === selectedDate!.dateStr
+      )
+
+      if (sameDate) {
+        // Ask user if they want to merge
+        setPendingOrderId(sameDate.id)
+        setPendingSubmitData(orderData)
+        setMergeDialogOpen(true)
+        setSubmitting(false)
+        return
+      }
+
+      // No conflict — create new order
+      await createNewOrder(orderData, user)
+    } catch (err) {
+      console.error('Error submitting order:', err)
+      setSubmitError('Errore durante l\'invio. Riprova.')
+      setSubmitting(false)
+    }
+  }
+
+  async function createNewOrder(
+    orderData: Record<string, unknown>,
+    user: { name: string; phone: string }
+  ) {
+    await addDoc(collection(db, 'orders'), orderData)
+    setUser(user.name, user.phone)
+    clearCart()
+    setOrderSuccess(true)
+    setSubmitting(false)
+  }
+
+  async function handleMergeYes() {
+    if (!pendingOrderId || !pendingSubmitData) return
+    setMergeDialogOpen(false)
+    setSubmitting(true)
+    try {
+      const orderRef = doc(db, 'orders', pendingOrderId)
+      const newItems = (pendingSubmitData.items as unknown[]) ?? []
+      await updateDoc(orderRef, {
+        items: arrayUnion(...newItems),
+        total: (pendingSubmitData.total as number) ?? 0,
+      })
+      setUser(effectiveUser.name, effectiveUser.phone)
+      clearCart()
+      setOrderSuccess(true)
+    } catch (err) {
+      console.error('Error merging order:', err)
+      setSubmitError('Errore durante l\'unione dell\'ordine. Riprova.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function handleMergeNo() {
+    if (!pendingSubmitData) return
+    setMergeDialogOpen(false)
+    setSubmitting(true)
+    try {
+      await createNewOrder(pendingSubmitData, effectiveUser)
+    } catch (err) {
+      console.error('Error creating separate order:', err)
+      setSubmitError('Errore durante l\'invio. Riprova.')
+      setSubmitting(false)
+    }
+  }
+
+  // Success screen
+  if (orderSuccess) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-8 bg-cream px-6 text-center">
+        <CheckCircle className="h-24 w-24 text-sage" />
+        <h1 className="text-4xl font-bold text-bark">Ordine inviato!</h1>
+        <p className="text-xl text-soil">
+          Grazie {effectiveUser.name || name}! Ci vediamo al mercato.
+        </p>
+        <p className="text-lg font-semibold text-terracotta">
+          {selectedDate?.label}
+        </p>
+        <Link
+          to="/"
+          className="rounded-2xl bg-sage px-10 py-5 text-xl font-bold text-cream shadow-md transition-transform active:scale-95 hover:bg-bark"
+        >
+          Torna ai prodotti
+        </Link>
+      </div>
+    )
+  }
+
+  // Empty cart screen
+  if (cart.length === 0) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-cream px-6 text-center">
+        <ShoppingBasket className="h-20 w-20 text-clay" />
+        <p className="text-3xl font-bold text-bark">La tua cassetta è vuota.</p>
+        <Link
+          to="/"
+          className="rounded-2xl bg-terracotta px-8 py-4 text-xl font-bold text-cream shadow-md transition-transform active:scale-95 hover:bg-bark"
+        >
+          Vai ai prodotti
+        </Link>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-cream pb-32">
+      {/* Header */}
+      <div className="bg-bark px-6 py-5">
+        <h1 className="text-3xl font-bold text-cream">La tua cassetta</h1>
+        <p className="mt-1 text-lg text-straw">Riepilogo e ritiro</p>
+      </div>
+
+      <div className="mx-auto max-w-2xl space-y-6 px-6 py-8">
+
+        {/* Cart summary */}
+        <section className="rounded-2xl bg-white p-6 shadow-md">
+          <h2 className="mb-4 text-2xl font-bold text-bark">
+            Prodotti selezionati
+          </h2>
+          <div className="divide-y divide-straw">
+            {cart.map((item) => (
+              <div
+                key={item.productId}
+                className="flex items-center justify-between py-4"
+              >
+                <div className="flex items-center gap-3">
+                  <ShoppingBasket className="h-7 w-7 text-clay" />
+                  <div>
+                    <p className="text-lg font-semibold text-bark">
+                      {item.productId}
+                    </p>
+                    <p className="text-base text-soil">
+                      {item.quantity} {item.measureUnit}
+                    </p>
+                  </div>
+                </div>
+                <span className="text-xl font-bold text-terracotta">
+                  {formatPrice(item.price * item.quantity, '')}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* Totals */}
+          <div className="mt-4 space-y-2 border-t border-straw pt-4">
+            <div className="flex justify-between text-base text-clay line-through">
+              <span>Prezzo pieno</span>
+              <span>€ {originalSubtotal.toFixed(2).replace('.', ',')}</span>
+            </div>
+            <div className="flex justify-between text-base font-semibold text-sage">
+              <span className="flex items-center gap-2">
+                <Leaf className="h-4 w-4" />
+                Sconto pre-ordine (-10%)
+              </span>
+              <span>- € {savings.toFixed(2).replace('.', ',')}</span>
+            </div>
+            <div className="flex justify-between text-2xl font-bold text-bark">
+              <span>Totale</span>
+              <span className="text-terracotta">
+                € {subtotal.toFixed(2).replace('.', ',')}
+              </span>
+            </div>
+          </div>
+        </section>
+
+        {/* Pickup date selection */}
+        <section className="rounded-2xl bg-white p-6 shadow-md">
+          <h2 className="mb-4 text-2xl font-bold text-bark">
+            Scegli data e mercato
+          </h2>
+          {datesLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className="h-20 animate-pulse rounded-2xl bg-straw"
+                />
+              ))}
+            </div>
+          ) : pickupDates.length === 0 ? (
+            <div className="flex flex-col items-center gap-3 py-6 text-center">
+              <AlertCircle className="h-10 w-10 text-clay" />
+              <p className="text-lg font-semibold text-soil">
+                Nessuna data disponibile al momento.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {pickupDates.map((pd) => {
+                const isSelected = selectedDate?.dateStr === pd.dateStr
+                return (
+                  <button
+                    key={pd.dateStr}
+                    onClick={() => setSelectedDate(pd)}
+                    className={`w-full rounded-2xl border-3 px-6 py-5 text-left text-xl font-bold transition-all active:scale-[0.98] ${
+                      isSelected
+                        ? 'border-terracotta bg-terracotta text-cream shadow-lg'
+                        : 'border-sage bg-cream text-bark hover:border-terracotta hover:bg-straw'
+                    }`}
+                  >
+                    <span className="block text-2xl">{pd.market.name}</span>
+                    <span
+                      className={`block text-lg font-semibold ${
+                        isSelected ? 'text-straw' : 'text-soil'
+                      }`}
+                    >
+                      {pd.label.split('—')[1]?.trim()}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </section>
+
+        {/* Authentication block */}
+        <section className="rounded-2xl bg-white p-6 shadow-md">
+          <h2 className="mb-4 text-2xl font-bold text-bark">I tuoi dati</h2>
+
+          {name && phone && !showChangeUser ? (
+            /* Returning user */
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center gap-4 rounded-2xl bg-sage/10 p-5">
+                <UserCheck className="h-10 w-10 text-sage" />
+                <div>
+                  <p className="text-2xl font-bold text-bark">
+                    Bentornato, {name}!
+                  </p>
+                  <p className="text-lg text-soil">{phone}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setShowChangeUser(true)
+                  setInputName(name)
+                  setInputPhone(phone)
+                }}
+                className="text-base font-semibold text-clay underline underline-offset-2 hover:text-bark"
+              >
+                Cambia utente
+              </button>
+            </div>
+          ) : (
+            /* New user or changing user */
+            <div className="space-y-4">
+              <div>
+                <label
+                  htmlFor="checkout-name"
+                  className="mb-2 block text-xl font-bold text-bark"
+                >
+                  Nome
+                </label>
+                <input
+                  id="checkout-name"
+                  type="text"
+                  value={inputName}
+                  onChange={(e) => setInputName(e.target.value)}
+                  placeholder="Il tuo nome"
+                  className="w-full rounded-2xl border-2 border-sage bg-cream px-5 py-4 text-xl text-bark placeholder-clay outline-none focus:border-terracotta"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="checkout-phone"
+                  className="mb-2 block text-xl font-bold text-bark"
+                >
+                  Numero di Telefono
+                </label>
+                <input
+                  id="checkout-phone"
+                  type="tel"
+                  value={inputPhone}
+                  onChange={(e) => setInputPhone(e.target.value)}
+                  placeholder="+39 000 0000000"
+                  className="w-full rounded-2xl border-2 border-sage bg-cream px-5 py-4 text-xl text-bark placeholder-clay outline-none focus:border-terracotta"
+                />
+              </div>
+              {showChangeUser && (
+                <button
+                  onClick={() => {
+                    clearUser()
+                    setShowChangeUser(false)
+                    setInputName('')
+                    setInputPhone('')
+                  }}
+                  className="text-base font-semibold text-clay underline underline-offset-2 hover:text-bark"
+                >
+                  Annulla
+                </button>
+              )}
+            </div>
+          )}
+        </section>
+
+        {/* Error message */}
+        {submitError && (
+          <div className="flex items-center gap-3 rounded-2xl bg-red-50 p-4 text-red-800">
+            <AlertCircle className="h-6 w-6 shrink-0" />
+            <p className="text-lg font-semibold">{submitError}</p>
+          </div>
+        )}
+
+        {/* Submit button */}
+        <button
+          onClick={handleSubmit}
+          disabled={submitting}
+          className="w-full rounded-2xl bg-terracotta py-6 text-2xl font-bold text-cream shadow-lg transition-transform active:scale-[0.98] hover:bg-bark disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          {submitting ? 'Invio in corso...' : 'Conferma il pre-ordine'}
+        </button>
+      </div>
+
+      {/* Order merge dialog */}
+      <Dialog open={mergeDialogOpen} onOpenChange={setMergeDialogOpen}>
+        <DialogContent
+          className="rounded-2xl bg-cream p-8 sm:max-w-sm"
+          showCloseButton={false}
+        >
+          <DialogHeader>
+            <DialogTitle className="text-center text-2xl font-bold text-bark">
+              Hai già un ordine!
+            </DialogTitle>
+          </DialogHeader>
+          <p className="mt-2 text-center text-lg text-soil">
+            Hai già un ordine in consegna per questa data. Vuoi unire i prodotti
+            nella stessa cassetta?
+          </p>
+          <div className="mt-6 flex flex-col gap-4">
+            <button
+              onClick={handleMergeYes}
+              className="w-full rounded-2xl bg-terracotta py-5 text-xl font-bold text-cream transition-colors hover:bg-bark active:bg-bark"
+            >
+              Sì, unisci la cassetta
+            </button>
+            <button
+              onClick={handleMergeNo}
+              className="w-full rounded-2xl border-3 border-sage py-5 text-xl font-bold text-sage transition-colors hover:bg-sage hover:text-cream active:bg-sage active:text-cream"
+            >
+              No, crea un nuovo ordine
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
 }

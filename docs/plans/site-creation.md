@@ -55,16 +55,16 @@ The backend relies on Firebase (Firestore for database, Storage for images). The
 ---
 
 ### Task 5: Frictionless Checkout & Order Merging
-- [ ] Build `src/pages/Checkout.tsx`. Display cart summary and calculated discount.
-- [ ] Fetch `excludedDates` from Firestore `settings/dates` doc, and render giant, easily tappable buttons for Pickup Date/Location selection using `getAvailablePickupDates()`.
-- [ ] Authentication block: 
+- [x] Build `src/pages/Checkout.tsx`. Display cart summary and calculated discount.
+- [x] Fetch `excludedDates` from Firestore `settings/dates` doc, and render giant, easily tappable buttons for Pickup Date/Location selection using `getAvailablePickupDates()`.
+- [x] Authentication block:
   - If `userSlice` is empty: show inputs for `Nome` and `Numero di Telefono`.
   - If `userSlice` has data: display "Bentornato [Nome]! (Cambia utente)".
-- [ ] Implement **Order Merging Logic** on checkout submission:
+- [x] Implement **Order Merging Logic** on checkout submission:
   - Query Firestore `orders` where `phone == user.phone` AND `status == 'pending'`.
   - If a pending order exists for the *same pickup date*, trigger a shadcn/ui Dialog: "Hai già un ordine in consegna per questa data. Vuoi unire i prodotti nella stessa cassetta?".
   - If yes: Update the existing Firestore document. If no/different date: Create a new document in `orders` collection.
-- [ ] Mark completed.
+- [x] Mark completed.
 
 ---
 
