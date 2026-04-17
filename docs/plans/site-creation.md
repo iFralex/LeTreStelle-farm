@@ -87,10 +87,10 @@ The backend relies on Firebase (Firestore for database, Storage for images). The
 ---
 
 ### Task 8: Admin Catalog & Firebase Storage Integrations
-- [ ] Build `src/pages/admin/AdminCatalog.tsx` to list all products. Add capability to toggle `isAvailable` boolean.
-- [ ] Create a form to Add/Edit products. Fields: `name`, `description`, `price`, `measureUnit`.
-- [ ] Integrate Firebase Storage: Add an input type `file` to upload images. Upon selection, upload to `products/{timestamp}_{filename}`, get the Download URL, and save it in the Firestore product document array `images`.
-- [ ] Mark completed.
+- [x] Build `src/pages/admin/AdminCatalog.tsx` to list all products. Add capability to toggle `isAvailable` boolean.
+- [x] Create a form to Add/Edit products. Fields: `name`, `description`, `price`, `measureUnit`.
+- [x] Integrate Firebase Storage: Add an input type `file` to upload images. Upon selection, upload to `products/{timestamp}_{filename}`, get the Download URL, and save it in the Firestore product document array `images`.
+- [x] Mark completed.
 
 ---
 
