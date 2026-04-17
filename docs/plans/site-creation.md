@@ -69,11 +69,11 @@ The backend relies on Firebase (Firestore for database, Storage for images). The
 ---
 
 ### Task 6: Customer Dashboard & Order Management
-- [ ] Build `src/pages/UserLogin.tsx`. Simple input for Phone Number. Saves to `localStorage` and redirects to `/ordini`.
-- [ ] Build `src/pages/UserOrders.tsx`. Fetch orders by phone number.
-- [ ] Group orders into "In Consegna" (Pending/Upcoming) and "Passati" (History).
-- [ ] Add a "Annulla Ordine" button for pending orders. Logic check: it must only be visible/active if the current date is > 2 days before the pickup date. Updates Firestore order `status` to `annullato`.
-- [ ] Mark completed.
+- [x] Build `src/pages/UserLogin.tsx`. Simple input for Phone Number. Saves to `localStorage` and redirects to `/ordini`.
+- [x] Build `src/pages/UserOrders.tsx`. Fetch orders by phone number.
+- [x] Group orders into "In Consegna" (Pending/Upcoming) and "Passati" (History).
+- [x] Add a "Annulla Ordine" button for pending orders. Logic check: it must only be visible/active if the current date is > 2 days before the pickup date. Updates Firestore order `status` to `annullato`.
+- [x] Mark completed.
 
 ---
 
