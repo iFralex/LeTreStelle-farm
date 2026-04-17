@@ -33,14 +33,14 @@ The backend relies on Firebase (Firestore for database, Storage for images). The
 ---
 
 ### Task 3: Core Business Logic (Dates & Pricing)
-- [ ] Create `src/lib/marketLogic.ts`.
-- [ ] Define a constant configuration for recurring markets (e.g., `[{ id: 'ariccia', name: 'Mercato di Ariccia', dayOfWeek: 0 }, { id: 'velletri', name: 'Mercato di Velletri', dayOfWeek: 3 }]`).
-- [ ] Write a function `getAvailablePickupDates(excludedDates: string[])`. The logic must:
+- [x] Create `src/lib/marketLogic.ts`.
+- [x] Define a constant configuration for recurring markets (e.g., `[{ id: 'ariccia', name: 'Mercato di Ariccia', dayOfWeek: 0 }, { id: 'velletri', name: 'Mercato di Velletri', dayOfWeek: 3 }]`).
+- [x] Write a function `getAvailablePickupDates(excludedDates: string[])`. The logic must:
   - Take the current date and add a **2-day lead time** (minimum notice).
   - Find the next 3-4 available recurring market dates.
   - Filter out any specific dates passed in the `excludedDates` array (fetched from Firestore later).
-- [ ] Write a formatting function to display prices with the Pre-order Discount (e.g., `-10%`).
-- [ ] Mark completed.
+- [x] Write a formatting function to display prices with the Pre-order Discount (e.g., `-10%`).
+- [x] Mark completed.
 
 ---
 
