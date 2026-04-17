@@ -95,9 +95,9 @@ The backend relies on Firebase (Firestore for database, Storage for images). The
 ---
 
 ### Task 9: Admin QR Code Generator & Excluded Dates Settings
-- [ ] Build `src/pages/admin/AdminSettings.tsx`. Create an interface to add specific dates (e.g., standard Datepicker) to an `excludedDates` array in Firestore, preventing customers from selecting them.
-- [ ] Build `src/pages/admin/AdminQR.tsx`. Fetch all products to create a dropdown list.
-- [ ] Implement `qrcode.react`. Render the QR code pointing to `https://[YOUR_DOMAIN]/p/[PRODUCT_ID]`.
-- [ ] Add an image upload field specifically to place a logo/image in the center of the QR code using `imageSettings` prop of `qrcode.react`.
-- [ ] Add a "Download PNG" button that captures the rendered QR canvas and triggers a browser download.
-- [ ] Mark completed.
+- [x] Build `src/pages/admin/AdminSettings.tsx`. Create an interface to add specific dates (e.g., standard Datepicker) to an `excludedDates` array in Firestore, preventing customers from selecting them.
+- [x] Build `src/pages/admin/AdminQR.tsx`. Fetch all products to create a dropdown list.
+- [x] Implement `qrcode.react`. Render the QR code pointing to `https://[YOUR_DOMAIN]/p/[PRODUCT_ID]`.
+- [x] Add an image upload field specifically to place a logo/image in the center of the QR code using `imageSettings` prop of `qrcode.react`.
+- [x] Add a "Download PNG" button that captures the rendered QR canvas and triggers a browser download.
+- [x] Mark completed.
