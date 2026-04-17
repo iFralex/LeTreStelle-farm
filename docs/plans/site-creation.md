@@ -45,12 +45,12 @@ The backend relies on Firebase (Firestore for database, Storage for images). The
 ---
 
 ### Task 4: Public UI - Landing & Product Pages
-- [ ] Build `src/pages/Landing.tsx`: A simple page explaining the farm's story with a grid of available products (fetched from Firestore `products` collection where `isAvailable == true`).
-- [ ] Build `src/pages/Product.tsx` (`/p/:id`). Fetch specific product details from Firestore.
-- [ ] Render an image gallery (using URLs from Firebase Storage), Title, Description, and Price per Unit.
-- [ ] Add the "Metti nella mia cassetta" (Add to Cart) button.
-- [ ] Implement the UX flow: Upon clicking "Add to Cart", show a prominent Dialog or Toast asking: "Aggiunto! Vuoi continuare la spesa o preparare la cassetta?" with buttons leading back to Landing or to `/checkout`.
-- [ ] Mark completed.
+- [x] Build `src/pages/Landing.tsx`: A simple page explaining the farm's story with a grid of available products (fetched from Firestore `products` collection where `isAvailable == true`).
+- [x] Build `src/pages/Product.tsx` (`/p/:id`). Fetch specific product details from Firestore.
+- [x] Render an image gallery (using URLs from Firebase Storage), Title, Description, and Price per Unit.
+- [x] Add the "Metti nella mia cassetta" (Add to Cart) button.
+- [x] Implement the UX flow: Upon clicking "Add to Cart", show a prominent Dialog or Toast asking: "Aggiunto! Vuoi continuare la spesa o preparare la cassetta?" with buttons leading back to Landing or to `/checkout`.
+- [x] Mark completed.
 
 ---
 
