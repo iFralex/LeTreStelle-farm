@@ -93,7 +93,7 @@ export default function Product() {
       <div className="flex min-h-screen items-center justify-center bg-cream">
         <div className="flex flex-col items-center gap-4">
           <Leaf className="h-12 w-12 animate-pulse text-sage" />
-          <p className="text-2xl font-semibold text-soil">Caricamento...</p>
+          <p className="font-heading text-2xl font-bold italic text-soil">Caricamento...</p>
         </div>
       </div>
     )
@@ -103,7 +103,7 @@ export default function Product() {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-cream px-6 text-center">
         <ShoppingBasket className="h-20 w-20 text-clay" />
-        <p className="text-3xl font-bold text-bark">Prodotto non trovato.</p>
+        <p className="font-heading text-3xl font-bold italic text-bark">Prodotto non trovato.</p>
         <Link
           to="/"
           className="rounded-2xl bg-sage px-8 py-4 text-xl font-bold text-cream shadow-md transition-transform active:scale-95 hover:bg-bark"
@@ -121,17 +121,17 @@ export default function Product() {
   return (
     <div className="min-h-screen bg-cream">
       {/* Back link */}
-      <div className="bg-bark px-6 py-4">
+      <div className="border-b border-straw bg-cream px-6 py-3">
         <Link
           to="/"
-          className="inline-flex items-center gap-2 text-lg font-semibold text-straw hover:text-cream"
+          className="inline-flex items-center gap-1.5 text-soil transition-colors hover:text-bark"
         >
-          <ChevronLeft className="h-5 w-5" />
-          Tutti i prodotti
+          <ChevronLeft className="h-4 w-4" />
+          <span className="text-sm font-medium">Tutti i prodotti</span>
         </Link>
       </div>
 
-      <div className="mx-auto max-w-2xl px-6 py-8 pb-28">
+      <div className="mx-auto max-w-2xl px-6 py-8 pb-8">
         {/* Image Gallery */}
         <div className="mb-8">
           <div className="relative aspect-square overflow-hidden rounded-2xl bg-straw shadow-md">
@@ -198,7 +198,7 @@ export default function Product() {
 
         {/* Product name & description */}
         <div className="mb-6">
-          <h1 className="mb-3 text-4xl font-bold leading-tight text-bark md:text-5xl">
+          <h1 className="mb-3 font-heading text-4xl font-bold italic leading-tight text-bark md:text-5xl">
             {product.name}
           </h1>
           <p className="text-xl leading-relaxed text-soil">
@@ -207,12 +207,12 @@ export default function Product() {
         </div>
 
         {/* Pricing card */}
-        <div className="mb-8 rounded-2xl bg-white p-6 shadow-md">
+        <div className="mb-8 rounded-2xl border border-golden/25 bg-white p-6 shadow-md">
           <div className="flex flex-wrap items-center gap-3">
             <span className="text-3xl font-bold text-terracotta">
               {formatPrice(discountedPrice, product.measureUnit)}
             </span>
-            <span className="rounded-full bg-terracotta px-4 py-1.5 text-base font-bold text-cream">
+            <span className="rounded-full border border-golden/40 bg-golden/20 px-4 py-1.5 text-base font-bold text-bark">
               {discountLabel} pre-ordine
             </span>
           </div>
@@ -272,7 +272,8 @@ export default function Product() {
                     aria-live="polite"
                     aria-label={`${formatQuantity(quantity)} ${product.measureUnit}`}
                   >
-                    {formatQuantity(quantity)} <span className="text-base font-semibold text-soil">{product.measureUnit}</span>
+                    {formatQuantity(quantity)}{' '}
+                    <span className="text-base font-semibold text-soil">{product.measureUnit}</span>
                   </span>
                   <button
                     onClick={() => setQuantity((q) => parseFloat((q + step).toFixed(2)))}
@@ -290,11 +291,95 @@ export default function Product() {
         {/* Add to cart button */}
         <button
           onClick={handleAddToCart}
-          className="w-full rounded-2xl bg-terracotta py-6 text-2xl font-bold text-cream shadow-lg transition-transform active:scale-[0.98] hover:bg-bark"
+          className="group w-full rounded-2xl bg-terracotta py-6 text-2xl font-bold text-cream shadow-lg transition-all active:scale-[0.98] hover:bg-bark hover:shadow-xl"
         >
-          Metti nella mia cassetta 🧺
+          <span className="inline-flex items-center gap-3">
+            <span className="transition-transform duration-300 group-hover:rotate-12 group-hover:scale-110">🧺</span>
+            Metti nella mia cassetta
+          </span>
         </button>
       </div>
+
+      {/* Cream → Bark wave */}
+      <div className="bg-cream">
+        <svg viewBox="0 0 1440 44" preserveAspectRatio="none" className="block h-11 w-full" style={{ fill: '#3D2B1F' }}>
+          <path d="M0,22 C240,44 480,0 720,22 C960,44 1200,0 1440,22 L1440,44 L0,44 Z" />
+        </svg>
+      </div>
+
+      {/* Come funziona il pre-ordine */}
+      <section className="bg-bark px-6 py-12 text-cream">
+        <div className="mx-auto max-w-2xl">
+          <h2 className="mb-10 text-center font-heading text-2xl font-bold italic">
+            Come funziona il pre-ordine
+          </h2>
+          <div className="grid grid-cols-3 gap-6 text-center">
+            {[
+              { emoji: '📱', step: '1', label: 'Scansiona il QR sulla cassetta al mercato' },
+              { emoji: '🧺', step: '2', label: 'Scegli prodotti, quantità e data di ritiro' },
+              { emoji: '🏪', step: '3', label: 'Ritira la tua cassetta fresca al mercato' },
+            ].map(({ emoji, step, label }) => (
+              <div key={step} className="flex flex-col items-center gap-3">
+                <span className="text-4xl" aria-hidden="true">{emoji}</span>
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-terracotta text-sm font-bold">
+                  {step}
+                </span>
+                <p className="text-sm leading-snug text-straw/90">{label}</p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-8 flex items-center justify-center gap-2 rounded-2xl border border-golden/30 bg-golden/10 px-5 py-3">
+            <span className="text-xl" aria-hidden="true">✨</span>
+            <p className="text-sm font-semibold text-golden">
+              Pre-ordinando risparmi il 10% sul prezzo di listino
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Bark → Straw wave */}
+      <div className="bg-bark">
+        <svg viewBox="0 0 1440 44" preserveAspectRatio="none" className="block h-11 w-full" style={{ fill: '#E8DFD0' }}>
+          <path d="M0,22 C240,0 480,44 720,22 C960,0 1200,44 1440,22 L1440,44 L0,44 Z" />
+        </svg>
+      </div>
+
+      {/* I nostri impegni */}
+      <section className="bg-straw px-6 py-12 pb-28">
+        <div className="mx-auto max-w-2xl">
+          <h2 className="mb-8 text-center font-heading text-2xl font-bold italic text-bark">
+            I nostri impegni
+          </h2>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            {[
+              {
+                emoji: '🌱',
+                title: 'Coltivato con cura',
+                text: 'Prodotti di stagione, rispettando i ritmi naturali della terra senza fretta.',
+              },
+              {
+                emoji: '⚡',
+                title: 'Sempre fresco',
+                text: 'Dal campo al mercato nel minor tempo possibile. Zero giorni di magazzino.',
+              },
+              {
+                emoji: '🤝',
+                title: 'Filiera cortissima',
+                text: 'Sai esattamente da dove viene il tuo cibo. Nessun intermediario.',
+              },
+            ].map(({ emoji, title, text }) => (
+              <div
+                key={title}
+                className="rounded-2xl bg-white p-5 text-center shadow-sm transition-shadow hover:shadow-md"
+              >
+                <span className="text-3xl" aria-hidden="true">{emoji}</span>
+                <h3 className="mt-3 font-bold text-bark">{title}</h3>
+                <p className="mt-1 text-sm leading-relaxed text-soil">{text}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {/* Post-add dialog */}
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
@@ -303,7 +388,7 @@ export default function Product() {
           showCloseButton={false}
         >
           <DialogHeader>
-            <DialogTitle className="text-center text-3xl font-bold text-bark">
+            <DialogTitle className="text-center font-heading text-3xl font-bold italic text-bark">
               Aggiunto! 🎉
             </DialogTitle>
           </DialogHeader>
