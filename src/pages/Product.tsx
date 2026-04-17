@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { ShoppingBasket, ChevronLeft, ChevronRight, Leaf, Minus, Plus } from 'lucide-react'
+import { ShoppingBasket, ChevronLeft, Leaf, Minus, Plus } from 'lucide-react'
 
 const DECIMAL_UNITS = new Set(['kg', 'l', 'lt', 'litri', 'etto', 'hg', 'g', 'ml', 'cl'])
 
@@ -43,6 +43,7 @@ export default function Product() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const addToCart = useStore((s) => s.addToCart)
+  const removeFromCart = useStore((s) => s.removeFromCart)
   const cart = useStore((s) => s.cart)
 
   const [product, setProduct] = useState<Product | null>(null)
@@ -64,7 +65,8 @@ export default function Product() {
         } else {
           const p = { id: snap.id, ...snap.data() } as Product
           setProduct(p)
-          setQuantity(getStep(p.measureUnit))
+          const existingItem = cart.find((i) => i.productId === p.id)
+          setQuantity(existingItem ? existingItem.quantity : getStep(p.measureUnit))
         }
       } catch (err) {
         console.error('Error fetching product:', err)
@@ -79,6 +81,7 @@ export default function Product() {
   function handleAddToCart() {
     if (!product) return
     const { discountedPrice } = applyPreOrderDiscount(product.price)
+    if (cartItem) removeFromCart(product.id)
     addToCart({
       productId: product.id,
       productName: product.name,
@@ -147,30 +150,6 @@ export default function Product() {
               <div className="flex h-full items-center justify-center">
                 <ShoppingBasket className="h-24 w-24 text-clay" />
               </div>
-            )}
-            {images.length > 1 && (
-              <>
-                <button
-                  onClick={() =>
-                    setActiveImage(
-                      (prev) => (prev - 1 + images.length) % images.length
-                    )
-                  }
-                  className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-3 shadow-md transition-transform active:scale-90"
-                  aria-label="Immagine precedente"
-                >
-                  <ChevronLeft className="h-7 w-7 text-bark" />
-                </button>
-                <button
-                  onClick={() =>
-                    setActiveImage((prev) => (prev + 1) % images.length)
-                  }
-                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-3 shadow-md transition-transform active:scale-90"
-                  aria-label="Immagine successiva"
-                >
-                  <ChevronRight className="h-7 w-7 text-bark" />
-                </button>
-              </>
             )}
           </div>
 
@@ -290,33 +269,24 @@ export default function Product() {
           )
         })()}
 
-        {/* Total price & cart notice */}
-        <div className="mb-5 rounded-2xl border border-golden/25 bg-white px-5 py-4 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-lg font-semibold text-soil">Totale</span>
-            <span className="text-2xl font-bold text-terracotta">
-              € {(discountedPrice * quantity).toFixed(2).replace('.', ',')}
-            </span>
+        {/* Cart edit notice */}
+        {cartItem && (
+          <div className="mb-4 flex items-start gap-3 rounded-2xl border border-golden/30 bg-golden/10 px-5 py-4">
+            <span className="text-xl" aria-hidden="true">🧺</span>
+            <p className="text-base font-semibold text-bark">
+              Già presente in cassetta:{' '}
+              <strong>{formatQuantity(cartItem.quantity)} {product.measureUnit}</strong>
+              {' '}— puoi modificare la quantità e aggiornare.
+            </p>
           </div>
-          {cartItem && (
-            <div className="mt-3 border-t border-straw pt-3 space-y-1.5">
-              <p className="text-sm text-clay">
-                🧺 Già in cassetta:{' '}
-                <strong className="text-bark">
-                  {formatQuantity(cartItem.quantity)} {product.measureUnit}
-                </strong>
-              </p>
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-bark">Totale cumulativo</span>
-                <span className="text-lg font-bold text-bark">
-                  € {(discountedPrice * (quantity + cartItem.quantity)).toFixed(2).replace('.', ',')}
-                  <span className="ml-1 text-sm font-normal text-soil">
-                    ({formatQuantity(quantity + cartItem.quantity)} {product.measureUnit})
-                  </span>
-                </span>
-              </div>
-            </div>
-          )}
+        )}
+
+        {/* Total price */}
+        <div className="mb-5 flex items-center justify-between rounded-2xl border border-golden/25 bg-white px-5 py-4 shadow-sm">
+          <span className="text-lg font-semibold text-soil">Totale</span>
+          <span className="text-2xl font-bold text-terracotta">
+            € {(discountedPrice * quantity).toFixed(2).replace('.', ',')}
+          </span>
         </div>
 
         {/* Add to cart button */}
@@ -326,7 +296,7 @@ export default function Product() {
         >
           <span className="inline-flex items-center gap-3">
             <span className="transition-transform duration-300 group-hover:rotate-12 group-hover:scale-110">🧺</span>
-            Metti nella mia cassetta
+            {cartItem ? 'Aggiorna la cassetta' : 'Metti nella mia cassetta'}
           </span>
         </button>
       </div>

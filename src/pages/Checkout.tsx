@@ -28,11 +28,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { ShoppingBasket, Leaf, CheckCircle, UserCheck, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react'
+import { ShoppingBasket, Leaf, CheckCircle, UserCheck, AlertCircle, ChevronDown, ChevronUp, Trash2 } from 'lucide-react'
 import { normalizePhone, isValidPhone } from '@/lib/phone'
 
 export default function Checkout() {
-  const { cart, clearCart, name, phone, setUser, clearUser } = useStore()
+  const { cart, clearCart, removeFromCart, name, phone, setUser, clearUser } = useStore()
 
   // Pickup date state
   const [excludedDates, setExcludedDates] = useState<string[]>([])
@@ -289,9 +289,18 @@ export default function Checkout() {
                     </p>
                   </div>
                 </div>
-                <span className="text-xl font-bold text-terracotta">
-                  {formatPrice(item.price * item.quantity, '')}
-                </span>
+                <div className="flex items-center gap-3">
+                  <span className="text-xl font-bold text-terracotta">
+                    {formatPrice(item.price * item.quantity, '')}
+                  </span>
+                  <button
+                    onClick={() => removeFromCart(item.productId)}
+                    aria-label={`Rimuovi ${item.productName}`}
+                    className="rounded-xl p-2 text-clay transition-colors hover:bg-red-50 hover:text-red-600 active:scale-95"
+                  >
+                    <Trash2 className="h-5 w-5" />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
